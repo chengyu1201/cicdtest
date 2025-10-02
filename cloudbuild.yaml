@@ -1,26 +1,46 @@
+# cloudbuild.yaml
+options:
+  # ✅ 解決 'service_account + 未設定 logs' 的錯誤
+  logging: CLOUD_LOGGING_ONLY
+  # machineType: E2_HIGHCPU_8   # 要快一點再打開
+
+substitutions:
+  # 這些名稱要跟 Trigger 的 Substitutions 一致（你截圖裡的）
+  _AR_HOSTNAME: europe-west1-docker.pkg.dev     # 也可留空交給 Trigger 覆蓋
+  _AR_REPOSITORY: cloud-run-source-deploy
+  _SERVICE_NAME: cicdtest
+  _DEPLOY_REGION: europe-west1
+  _PLATFORM: managed
+
 steps:
+  # 1) Build image
   - name: gcr.io/cloud-builders/docker
     args:
       - build
-      - '-t'
-      - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+      - -t
+      - '${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$SHORT_SHA'
       - .
+
+  # 2) Push image
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+      - '${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$SHORT_SHA'
+
+  # 3) Deploy to Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
     args:
       - run
       - deploy
-      - $_SERVICE_NAME
-      - '--image'
-      - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
-      - '--region'
-      - $_DEPLOY_REGION
-      - '--platform'
-      - $_PLATFORM
-    entrypoint: gcloud
-timeout: 1200s
+      - '${_SERVICE_NAME}'
+      - --image
+      - '${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$SHORT_SHA'
+      - --region
+      - '${_DEPLOY_REGION}'
+      - --platform
+      - '${_PLATFORM}'
+      - --allow-unauthenticated   # 若不公開就移除
+
 images:
-  - '$_GCR_HOSTNAME/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA'
+  - '${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$SHORT_SHA'
