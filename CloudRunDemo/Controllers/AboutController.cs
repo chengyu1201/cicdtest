@@ -10,7 +10,7 @@ namespace CloudRunDemo.Controllers
         [HttpGet(Name = "About")]
         public string Get()
         {
-            return "Like and subscribe!!!";
+            return "hihihiihihihih!!!";
         }
     }
 }
